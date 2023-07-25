@@ -25,7 +25,7 @@ device = torch.device('cpu')
 X, Y = put_in_device(X, Y, device)
 
 f_hat = torch.zeros(X.shape[0], 1).to(device)
-k = [0., 0., 0., 0.]
+k = [1., 1., 1., 1.]
 PINN = Curiosity(X, Y, idx, idx_y0, f_hat, 1e-2, k, 10, 1, device)
 
 # Make all outputs positive
