@@ -2,6 +2,7 @@ from ode import *
 import matplotlib.pyplot as plt
 import torch
 from pinn import *
+from sklearn.metrics import mean_absolute_error
 
 y0 = np.array([1., 0., 0.2, 0.])
 
@@ -13,7 +14,7 @@ class parameters():
 
 prm = parameters()
 
-dt = 0.01
+dt = 0.1
 tf = 10
 t, mat_y = runge_kutta(y0, prm, dt, tf)
 
@@ -93,3 +94,5 @@ print(f'k1 = {PINN.PINN.k1.detach().numpy()}')
 print(f'k2 = {PINN.PINN.k2.detach().numpy()}')
 print(f'k3 = {PINN.PINN.k3.detach().numpy()}')
 print(f'k4 = {PINN.PINN.k4.detach().numpy()}')
+
+print(mean_absolute_error(c_pred.detach().numpy().flatten(), mat_y[:101,:].flatten()))
