@@ -9,10 +9,10 @@ PATH = os.getcwd()
 
 class CurveFit():
     
-    def __init__(self, y0, Q, create):
+    def __init__(self, y0, create):
         self.y0 = y0
-        self.Q = Q
         self.create = create
+        self.EVALUATE_Q = None
         
     def func(self, y, k11, k12,
                       k21, k22,
@@ -43,7 +43,7 @@ class CurveFit():
         f[2] = (- k3*cDG + k4*cMG*cME + k5*cMG - k6*cG*cME)*-1
         f[3] = (- k5*cMG + k6*cG*cME)*-1
         f[4] = (- k1*cTG + k2*cDG*cME - k3*cDG + k4*cMG*cME - k5*cMG + k6*cG*cME)*-1
-        f[5] = (e*self.Q + w1*T + w2)
+        f[5] = (e*self.Q + w1*T + w2)/10
 
         return f
 
@@ -54,12 +54,12 @@ class CurveFit():
             c = df.iloc[:,1:4].to_numpy()
             Q = np.ones(c.shape[0],dtype=int)*int(file[-6])
             Q = Q.reshape(-1,1)
-            y = np.concatenate((t, c), axis=1)
+            y = np.concatenate((t, c, Q), axis=1)
             z = np.array([])
         if 'T' in file.split('_')[0]:
             T = df['T'].to_numpy().reshape(-1,1)
             Q = df['Q'].to_numpy().reshape(-1,1)
-            z = np.concatenate((t, T), axis=1)
+            z = np.concatenate((t, T, Q), axis=1)
             y = np.array([])
 
         return y, z
@@ -78,7 +78,7 @@ class CurveFit():
                 elif len(y) == 0:
                     self.zdata = np.copy(z)
         
-        self.T_mean = np.mean(self.zdata[:,-1])
+        self.T_mean = np.mean(self.zdata[:,-2])
 
         return self.ydata, self.zdata
 
@@ -100,103 +100,137 @@ class CurveFit():
                      k51, k52,
                      k61, k62,
                      e, w1, w2):
-        y_out = np.array([])
-        y = np.array([self.y0])
-        for i in range(len(t)-1):
-            dt = t[i+1] - t[i]
-            c1 = dt * self.func(y[-1], k11, k12,
-                                       k21, k22,
-                                       k31, k32,
-                                       k41, k42,
-                                       k51, k52,
-                                       k61, k62,
-                                       e, w1, w2)
-            c2 = dt * self.func(y[-1]+c1/2, k11, k12,
+        y_Q = np.empty((3*t.size,len(self.y0)))
+        j = 0
+        for Q in [4, 5, 6]:
+            self.Q = Q
+            y = np.array([self.y0])
+            for i in range(len(t)-1):
+                dt = t[i+1] - t[i]
+                c1 = dt * self.func(y[-1], k11, k12,
+                                        k21, k22,
+                                        k31, k32,
+                                        k41, k42,
+                                        k51, k52,
+                                        k61, k62,
+                                        e, w1, w2)
+                c2 = dt * self.func(y[-1]+c1/2, k11, k12,
+                                                k21, k22,
+                                                k31, k32,
+                                                k41, k42,
+                                                k51, k52,
+                                                k61, k62,
+                                                e, w1, w2)
+                c3 = dt * self.func(y[-1]+c2/2, k11, k12,
+                                                k21, k22,
+                                                k31, k32,
+                                                k41, k42,
+                                                k51, k52,
+                                                k61, k62,
+                                                e, w1, w2)
+                c4 = dt * self.func(y[-1]+c3, k11, k12,
                                             k21, k22,
                                             k31, k32,
                                             k41, k42,
                                             k51, k52,
                                             k61, k62,
                                             e, w1, w2)
-            c3 = dt * self.func(y[-1]+c2/2, k11, k12,
-                                            k21, k22,
-                                            k31, k32,
-                                            k41, k42,
-                                            k51, k52,
-                                            k61, k62,
-                                            e, w1, w2)
-            c4 = dt * self.func(y[-1]+c3, k11, k12,
-                                          k21, k22,
-                                          k31, k32,
-                                          k41, k42,
-                                          k51, k52,
-                                          k61, k62,
-                                          e, w1, w2)
-            y = np.append(y,
-                            [y[-1] + 1/6 * (c1 + 2*c2 + 2*c3 + c4)],
-                            axis=0)
+                y = np.append(y,
+                                [y[-1] + 1/6 * (c1 + 2*c2 + 2*c3 + c4)],
+                                axis=0)
+                
+            y_Q[j:j+t.size,:] = y
+            j += t.size
+            
+            if self.create and self.Q == self.EVALUATE_Q:
+                ypred = y[:,:3]
+                zpred = y[:,-1].reshape(-1,1)
+                x_out = np.concatenate((ypred, zpred), axis=1)
         
         if not self.create:
-            ypred = y[self.idx_c,:3]
-            zpred = y[self.idx_T,-1].reshape(-1,1)
+            ypred = y_Q[self.idx_c,:3]
+            zpred = y_Q[self.idx_T,-1].reshape(-1,1)
             y_out = ypred.flatten()
             z_out = zpred.flatten()
             x_out = np.concatenate((y_out, z_out))
-        
-        if self.create:
-            ypred = y[:,:3]
-            zpred = y[:,-1].reshape(-1,1)
-            x_out = np.concatenate((ypred, zpred), axis=1)
                 
         return x_out
 
 y0 = np.array([0.61911421,0.040004937,0.000394678,0.0,0.0,33.0])
 
 # Data
-curve = CurveFit(y0, 4, False)
-files = ['data/exp1_4W.csv', #'data/exp1_5W.csv', 'data/exp1_6W.csv',
-         'data/exp2_4W.csv', #'data/exp2_5W.csv', 'data/exp2_6W.csv',
-         'data/exp3_4W.csv', #'data/exp3_5W.csv', 'data/exp3_6W.csv',
-         'data/T1_4W.csv', #'data/T1_5W.csv', 'data/T1_6W.csv',
-         'data/T2_4W.csv', #'data/T2_5W.csv', 'data/T2_6W.csv',
-         'data/T3_4W.csv'] #'data/T3_5W.csv', 'data/T3_6W.csv']
-yexp, zexp = curve.get_data(files)
-ydata = yexp[:,1:].flatten()
-zdata = zexp[:,1:].flatten()
-ytrain = np.concatenate((ydata, zdata))
+curve = CurveFit(y0, False)
+files = np.array([['data/exp1_4W.csv', 'data/exp1_5W.csv', 'data/exp1_6W.csv'],
+         ['data/exp2_4W.csv', 'data/exp2_5W.csv', 'data/exp2_6W.csv'],
+         ['data/exp3_4W.csv', 'data/exp3_5W.csv', 'data/exp3_6W.csv'],
+         ['data/T1_4W.csv', 'data/T1_5W.csv', 'data/T1_6W.csv'],
+         ['data/T2_4W.csv', 'data/T2_5W.csv', 'data/T2_6W.csv'],
+         ['data/T3_4W.csv', 'data/T3_5W.csv', 'data/T3_6W.csv']])
+y_train = np.array([])
+for i in range(files.shape[1]):
+    yexp, zexp = curve.get_data(files[:,i])
+    ydata = yexp[:,1:-1].flatten()
+    zdata = zexp[:,1:-1].flatten()
+    ytrain = np.concatenate((y_train, ydata, zdata))
 
 # Time
 t = np.linspace(0,600,3001)
 curve.make_idx(t)
 
 # Fit
-p0 = [1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1, -1, -1]
+p0 = [1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 1/240, 1e-4, 0.5, -0.1, -0.1]
 bounds = ((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -np.inf, -np.inf, -np.inf), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf))
-popt, pcov, infodict, mesg, ier = curve_fit(curve.ode, t, ytrain, p0=p0, bounds=bounds, method='trf', full_output=True, max_nfev=200)
+popt, pcov = curve_fit(curve.ode, t, ytrain, p0=p0, bounds=bounds, method='trf')
 print(popt)
-print(infodict)
-print(mesg)
 
 # Pred
 k11, k12, k21, k22, k31, k32, k41, k42, k51, k52, k61, k62, e, w1, w2 = popt[0], popt[1], popt[2], popt[3], popt[4], popt[5], popt[6], popt[7], popt[8], popt[9], popt[10], popt[11], popt[12], popt[13], popt[14]
 curve.create = True
-xpred = curve.ode(t, k11, k12,
-                     k21, k22,
-                     k31, k32,
-                     k41, k42,
-                     k51, k52,
-                     k61, k62,
-                     e, w1, w2)
+
+curve.EVALUATE_Q = 4
+xpred_4W = curve.ode(np.linspace(0,600,3001), k11, k12,
+                        k21, k22,
+                        k31, k32,
+                        k41, k42,
+                        k51, k52,
+                        k61, k62,
+                        e, w1, w2)
+
+curve.EVALUATE_Q = 5
+xpred_5W = curve.ode(np.linspace(0,360,1801), k11, k12,
+                        k21, k22,
+                        k31, k32,
+                        k41, k42,
+                        k51, k52,
+                        k61, k62,
+                        e, w1, w2)
+
+curve.EVALUATE_Q = 6
+xpred_6W = curve.ode(np.linspace(0,240,1201), k11, k12,
+                        k21, k22,
+                        k31, k32,
+                        k41, k42,
+                        k51, k52,
+                        k61, k62,
+                        e, w1, w2)
 
 # Graphs
-plt.plot(yexp[:,0], yexp[:,2], 'or', label='Expériences')
-plt.plot(t, xpred[:,1], '-k', label='Prédictions')
+plt.plot(yexp[yexp[:,-1]==4][:,0], yexp[yexp[:,-1]==4][:,2], 'ob', label='Expériences 4W')
+plt.plot(yexp[yexp[:,-1]==5][:,0], yexp[yexp[:,-1]==5][:,2], 'or', label='Expériences 5W')
+plt.plot(yexp[yexp[:,-1]==6][:,0], yexp[yexp[:,-1]==6][:,2], 'ok', label='Expériences 6W')
+plt.plot(np.linspace(0,600,3001), xpred_4W[:,1], '-b', label='TRF 4W')
+plt.plot(np.linspace(0,360,1801), xpred_5W[:,1], '-r', label='TRF 5W')
+plt.plot(np.linspace(0,240,1201), xpred_6W[:,1], '-k', label='TRF 6W')
 plt.legend()
 plt.xlabel('Temps (s)')
 plt.ylabel('[DG] (mol/L)')
 plt.savefig('main.png',dpi=600)
 plt.show()
 
-plt.plot(zexp[:,0], zexp[:,1], 'or')
-plt.plot(t, xpred[:,-1], '-k')
+plt.plot(zexp[zexp[:,-1]==4][:,0], zexp[zexp[:,-1]==4][:,1], 'ob', label='Expériences 4W')
+plt.plot(zexp[zexp[:,-1]==5][:,0], zexp[zexp[:,-1]==5][:,1], 'or', label='Expériences 5W')
+plt.plot(zexp[zexp[:,-1]==6][:,0], zexp[zexp[:,-1]==6][:,1], 'ok', label='Expériences 6W')
+plt.plot(np.linspace(0,600,3001), xpred_4W[:,-1], '-b', label='TRF 4W')
+plt.plot(np.linspace(0,360,1801), xpred_5W[:,-1], '-r', label='TRF 5W')
+plt.plot(np.linspace(0,240,1201), xpred_6W[:,-1], '-k', label='TRF 6W')
 plt.show()
