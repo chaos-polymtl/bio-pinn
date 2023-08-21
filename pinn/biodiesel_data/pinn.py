@@ -54,8 +54,8 @@ class PINeuralNet(nn.Module):
         self.A6 = nn.Parameter(self.A6)
 
         self.e = torch.tensor(0.5, requires_grad=True).float().to(device)
-        self.c1 = torch.tensor(0.1, requires_grad=True).float().to(device)
-        self.c2 = torch.tensor(0.1, requires_grad=True).float().to(device)
+        self.c1 = torch.tensor(-0.1, requires_grad=True).float().to(device)
+        self.c2 = torch.tensor(-0.1, requires_grad=True).float().to(device)
         
         self.e = nn.Parameter(self.e)
         self.c1 = nn.Parameter(self.c1)

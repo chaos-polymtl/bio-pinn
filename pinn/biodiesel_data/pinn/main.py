@@ -14,7 +14,7 @@ T_files = ['T1_6W.csv', 'T2_6W.csv', 'T3_6W.csv',
 
 X, Y, Z, idx, idx_T, idx_y0 = gather_data(files, T_files)
 
-device = torch.device('cuda')
+device = torch.device('cpu')
 X_train, Y_train, Z_train = put_in_device(X, Y, Z, device)
 f_hat = torch.zeros(X_train.shape[0], 1).to(device)
 
@@ -42,7 +42,7 @@ for i, p in enumerate(PINN.PINN.parameters()):
     p.data.clamp_(min=0.)
 
 epoch = 0
-max_epochs = 1000000
+max_epochs = 100000
 while epoch <= max_epochs:
 
     try:
@@ -68,16 +68,16 @@ while epoch <= max_epochs:
         if epoch == 5000:
             PINN.optimizer = torch.optim.Adam(PINN.params, lr=1e-4)
 
-        if epoch == 25000:
+        if epoch == 10000:
             PINN.regularization = 50
 
-        if epoch == 50000:
+        if epoch == 20000:
             PINN.regularization = 500
 
-        if epoch == 75000:
+        if epoch == 30000:
             PINN.regularization = 5000
 
-        if epoch == 100000:
+        if epoch == 40000:
             PINN.optimizer = torch.optim.Adam(PINN.params, lr=1e-5)
 
         # if epoch == 125000:

@@ -29,7 +29,7 @@ T_files = ['T1_6W.csv', 'T2_6W.csv', 'T3_6W.csv',
            'T1_5W.csv', 'T2_5W.csv', 'T3_5W.csv',
            'T1_4W.csv', 'T2_4W.csv', 'T3_4W.csv']
 
-X, Y, Z, idx, idx_yf, idx_y0 = gather_data(files, T_files)
+X, Y, Z, idx, idx_T, idx_y0 = gather_data(files, T_files)
 
 device = torch.device('cpu')
 X_train, Y_train, Z_train = put_in_device(X, Y, Z, device)
@@ -171,7 +171,7 @@ plt.ylabel('ME Concentration [mol/L]')
 plt.legend()
 plt.show()
 
-plt.plot(X_train[:,0], Z_train[:,0], 'o', markersize=1, label='Experiments')
+plt.plot(X_train[idx_T,0], Z_train[idx_T,0], 'o', markersize=1, label='Experiments')
 plt.plot(df_6W['t'].to_numpy(), df_6W['T'].to_numpy(), 'o', markersize=1, label='PINN 6W')
 plt.plot(df_5W['t'].to_numpy(), df_5W['T'].to_numpy(), 'o', markersize=1, label='PINN 5W')
 plt.plot(df_4W['t'].to_numpy(), df_4W['T'].to_numpy(), 'o', markersize=1, label='PINN 4W')
