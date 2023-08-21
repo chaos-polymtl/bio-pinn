@@ -1,15 +1,29 @@
-# Importation de librairies
+# ============================================================================
+# Concentration and Temperature data
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Imports
 import torch
 import numpy as np
 import pandas as pd
+# ---------------------------------------------------------------------------
 
 # Set seed
 torch.set_default_dtype(torch.float)
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-# Read data
 def read_data(file):
+    """Read data from csv file
+
+    Args:
+        file (string): Name of the csv file
+
+    Returns:
+        numpy array: Tensor with data
+    """
     data = pd.read_csv('data/'+file, sep=',')
     data = data.replace(np.nan, 0.)
     
@@ -18,6 +32,15 @@ def read_data(file):
     return C
 
 def find_idx_C(t, C):
+    """Find the right index for data points within collocation points
+
+    Args:
+        t (numpy array): Time
+        C (numpy array): Concentration over time (from GC-FID)
+
+    Returns:
+        list: Indexation
+    """
     idx = []
     t_data = C[:,0]
     for ti in t_data:
@@ -26,6 +49,15 @@ def find_idx_C(t, C):
     return idx
 
 def find_idx_T(t, T):
+    """Find the right index for data points within collocation points
+
+    Args:
+        t (numpy array): Time
+        T (numpy array): Temperature over time (from infrared sensor)
+
+    Returns:
+        list: Indexation
+    """
     idx = []
     t_data = T[:,1]
     for ti in t_data:
@@ -34,6 +66,17 @@ def find_idx_T(t, T):
     return idx
 
 def put_in_device(x, y, z, device):
+    """Transform numpy arrays to tensors (for PyTorch)
+
+    Args:
+        x (numpy array): Input array (time)
+        y (numpy array): Output array (concentration)
+        z (numpy array): Output array (temperature)
+        device (string): CPU or CUDA
+
+    Returns:
+        tensor: Input and output tensors
+    """
 
     X = torch.from_numpy(x).float().to(device)
     Y = torch.from_numpy(y).float().to(device)
@@ -42,6 +85,15 @@ def put_in_device(x, y, z, device):
     return X, Y, Z
 
 def gather_data(files, T_files):
+    """Gather all data in tensors
+
+    Args:
+        files (list of string): All files containing concentration data points
+        T_files (list of string): All files containing temperature data points
+
+    Returns:
+        tensor and list: Input and output tensors, lists of indexation
+    """
     
     C = read_data(files[0])
     P = float(files[0].split('_')[1].split('W')[0])

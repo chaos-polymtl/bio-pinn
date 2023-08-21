@@ -1,3 +1,13 @@
+# ============================================================================
+# Physics-informed Neural Network functions using PyTorch
+# Goal : Predict the kinetic constants of a microwave-assisted biodiesel process.
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+
+# GET AND SHOW RESULTS OF FINAL PINN MODEL
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Imports
 import os
 import shutil
 import pandas as pd
@@ -15,9 +25,10 @@ from data import *
 from numerical import *
 import torch
 import matplotlib.pyplot as plt
+# ---------------------------------------------------------------------------
 
 # --------------------------------------------------------------
-# Modèle
+# Model
 # --------------------------------------------------------------
 model = torch.load('model.pt', map_location=torch.device('cpu'))
 
@@ -37,7 +48,7 @@ X_train, Y_train, Z_train = put_in_device(X, Y, Z, device)
 output = model(X_train)
 
 # --------------------------------------------------------------
-# Extraction des données
+# Data extraction
 # --------------------------------------------------------------
 
 dict_output = {}
@@ -104,7 +115,7 @@ prm.T = df_4W['T'].to_numpy()
 t_num_4, y_num_4 = euler(y0, df_4W['t'].to_numpy(), prm)
 
 # --------------------------------------------------------------
-# Graphique
+# Plots
 # --------------------------------------------------------------
 
 plt.plot(X_train[idx[:12],0], Y_train[idx[:12],0], 'o', label='Experiments 6W')
@@ -197,7 +208,7 @@ print(f'A6: {float(model.A6.detach().numpy())}')
 print(f'E6: {float(model.E6.detach().numpy())}')
 
 # --------------------------------------------------------------
-# Génération des résultats dans des bases de données
+# Database of results
 # --------------------------------------------------------------
 
 data_PINN_4W = {}

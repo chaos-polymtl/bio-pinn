@@ -1,10 +1,16 @@
+# ============================================================================
+# Physics-informed Neural Network functions using PyTorch
+# Goal : Predict the kinetic constants of a microwave-assisted biodiesel process.
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# ============================================================================
+
+# ---------------------------------------------------------------------------
 # Libraries importation
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-
 import numpy as np
-import os
+# ---------------------------------------------------------------------------
 
 # Set seed
 torch.set_default_dtype(torch.float)
@@ -15,9 +21,18 @@ np.random.seed(1234)
 class PINeuralNet(nn.Module):
 
     def __init__(self, device, E, A, neurons):
+        """Constructor
+
+        Args:
+            device (string): CPU or CUDA
+            E (list): Initial estimate of k''
+            A (list): Initial estimate of k'
+            neurons (int): Number of neurons in hidden layers
+        """
 
         super().__init__()
 
+        # Architecture
         self.activation = nn.Tanh()
 
         self.f1 = nn.Linear(2, neurons)
@@ -25,6 +40,8 @@ class PINeuralNet(nn.Module):
         self.f3 = nn.Linear(neurons, neurons)
         self.out = nn.Linear(neurons, 6)
 
+        # Parameters set up
+        # Molar balances
         self.E1 = torch.tensor(E[0], requires_grad=True).float().to(device)
         self.E2 = torch.tensor(E[1], requires_grad=True).float().to(device)
         self.E3 = torch.tensor(E[2], requires_grad=True).float().to(device)
@@ -53,6 +70,7 @@ class PINeuralNet(nn.Module):
         self.A5 = nn.Parameter(self.A5)
         self.A6 = nn.Parameter(self.A6)
 
+        # Energy balance
         self.e = torch.tensor(0.5, requires_grad=True).float().to(device)
         self.c1 = torch.tensor(-0.1, requires_grad=True).float().to(device)
         self.c2 = torch.tensor(-0.1, requires_grad=True).float().to(device)
@@ -62,7 +80,14 @@ class PINeuralNet(nn.Module):
         self.c2 = nn.Parameter(self.c2)
 
     def forward(self, x):
+        """Forward pass
 
+        Args:
+            x (tensor): Input tensor
+
+        Returns:
+            tensor: Output tensor
+        """
         if torch.is_tensor(x) != True:
             x = torch.from_numpy(x)
         
@@ -83,6 +108,25 @@ class PINeuralNet(nn.Module):
 class Curiosity():
 
     def __init__(self, X, Y, Z, idx, idx_y0, idx_T, f_hat, learning_rate, E, A, neurons, regularization, penalization, device, prm):
+        """Constructor
+
+        Args:
+            X (tensor): Input tensor
+            Y (tensor): Output tensor (concentrations)
+            Z (tensor): Temperature output tensor
+            idx (list): Index of concentration data points
+            idx_y0 (list): Index of IC data points
+            idx_T (list): Index of temperature data points
+            f_hat (tensor): Null tensor (for residuals)
+            learning_rate (float): Learning rate for gradient descent
+            E (list): Initial estimates of k''
+            A (list): Initial estimates of k'
+            neurons (int): Number of neurons in hidden layers
+            regularization (float): Regularization parameters on MSE of molar balances
+            penalization (float): Regularization parameter on MSE of experimental data
+            device (string): CPU or CUDA
+            prm (struct): Extra paramaters
+        """
         
         def loss_function_ode(output, target):
             
@@ -148,10 +192,21 @@ class Curiosity():
         self.prm = prm
 
     def loss(self, x, y_train):
+        """Loss function
 
+        Args:
+            x (tensor): Input tensor
+            y_train (tensor): Output tensor (for training)
+
+        Returns:
+            float: Evaluation of the loss function
+        """
+
+        # Input
         g = x.clone()
         g.requires_grad = True
         
+        # Output
         y = self.PINN(g)
         cTG = y[:,0].reshape(-1,1)
         cDG = y[:,1].reshape(-1,1)
@@ -160,8 +215,10 @@ class Curiosity():
         cME = y[:,4].reshape(-1,1)
         T = y[:,5].reshape(-1,1)
 
+        # Microwave power
         Q = g[:,1].reshape(-1,1)
         
+        # Kinetic constants (using Taylor's linearization of Arrhenius equation)
         k1 = self.PINN.A1 + self.PINN.E1 * (T - torch.mean(T))
         k2 = self.PINN.A2 + self.PINN.E2 * (T - torch.mean(T))
         k3 = self.PINN.A3 + self.PINN.E3 * (T - torch.mean(T))
@@ -169,6 +226,7 @@ class Curiosity():
         k5 = self.PINN.A5 + self.PINN.E5 * (T - torch.mean(T))
         k6 = self.PINN.A6 + self.PINN.E6 * (T - torch.mean(T))
 
+        # Kinetic constants (using Arrhenius equation)
         # k1 = self.PINN.A1 * torch.exp(-self.PINN.E1 / T)
         # k2 = self.PINN.A2 * torch.exp(-self.PINN.E2 / T)
         # k3 = self.PINN.A3 * torch.exp(-self.PINN.E3 / T)
@@ -176,6 +234,7 @@ class Curiosity():
         # k5 = self.PINN.A5 * torch.exp(-self.PINN.E5 / T)
         # k6 = self.PINN.A6 * torch.exp(-self.PINN.E6 / T)
         
+        # Automatic differentiation
         grad_cTG = autograd.grad(cTG, g, torch.ones(x.shape[0], 1).to(self.device), \
                                  retain_graph=True, create_graph=True) \
                                  [0][:,0].reshape(-1,1)
@@ -195,6 +254,7 @@ class Curiosity():
                                retain_graph=True, create_graph=True) \
                                [0][:,0].reshape(-1,1)
 
+        # MSE of ODEs (molar balances)
         self.loss_cTG_ode = self.loss_function_ode(grad_cTG + k1*cTG - k2*cDG*cME, self.f_hat)
         self.loss_cDG_ode = self.loss_function_ode(grad_cDG - k1*cTG + k2*cDG*cME \
                                                             + k3*cDG - k4*cMG*cME, self.f_hat)
@@ -204,9 +264,12 @@ class Curiosity():
         self.loss_cME_ode = self.loss_function_ode(grad_cME - k1*cTG + k2*cDG*cME \
                                                             - k3*cDG + k4*cMG*cME \
                                                             - k5*cMG + k6*cG*cME, self.f_hat)
+        
+        # MSE of ODE (energy balance)
         self.loss_T_ode = self.loss_function_ode(self.prm.m_Cp*grad_T - self.PINN.e*Q \
                                                  - self.PINN.c1*T - self.PINN.c2, self.f_hat)
         
+        # MSE of data points (concentration & temperature)
         self.loss_cTG_data = self.loss_function_data(cTG, y_train[:,0].reshape(-1,1))
         self.loss_cDG_data = self.loss_function_data(cDG, y_train[:,1].reshape(-1,1))
         self.loss_cMG_data = self.loss_function_data(cMG, y_train[:,2].reshape(-1,1))
@@ -214,6 +277,7 @@ class Curiosity():
         self.loss_cME_data = self.loss_function_IC(cME, y_train[:,4].reshape(-1,1))
         self.loss_T_data = self.loss_function_T(T, self.z)
 
+        # Total loss function
         self.loss_c_data = self.loss_cTG_data + self.loss_cDG_data + self.loss_cMG_data + self.loss_cG_data + self.loss_cME_data
         self.loss_c_ode = self.loss_cTG_ode + self.loss_cDG_ode + self.loss_cMG_ode + self.loss_cG_ode + self.loss_cME_ode
         
@@ -222,6 +286,11 @@ class Curiosity():
         return self.total_loss
     
     def closure(self):
+        """Forward and backward pass
+
+        Returns:
+            float: Evaluation of the loss function
+        """
 
         self.optimizer.zero_grad()
         

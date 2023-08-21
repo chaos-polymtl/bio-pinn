@@ -1,7 +1,24 @@
+# ============================================================================
+# Numerical solver of ODEs using Runge-Kutta method
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Library
 import numpy as np
 import torch
+# ---------------------------------------------------------------------------
 
 def edo(y, prm):
+    """Ordinary differiential equation
+
+    Args:
+        y (numpy array): Value of dependant variables
+        prm (struct): Kinetic parameters
+
+    Returns:
+        numpy array: Right hand side of ODEs
+    """
 
     cA = y[0]
     cB = y[1]
@@ -23,6 +40,17 @@ def edo(y, prm):
     return f
 
 def runge_kutta(y0, prm, dt, tf):
+    """Runge-Kutta method to solve ODEs
+
+    Args:
+        y0 (numpy array): Initial condition
+        prm (struct): Kinetic parameters
+        dt (float): Time step
+        tf (float): Simulation time
+
+    Returns:
+        numpy array: Time and results
+    """
 
     t = np.array([0])
     mat_y = np.array([y0])
@@ -45,6 +73,15 @@ def runge_kutta(y0, prm, dt, tf):
     return t, mat_y
 
 def add_noise(y, percentage):
+    """Add noise to the artificial data
+
+    Args:
+        y (numpy array): Output tensor
+        percentage (float): Relative error on data
+
+    Returns:
+        numpy array: Output array with noise applied
+    """
 
     for i in range(y.shape[1]):
         noise = np.random.normal(0, y[1:,i].std(), y.shape[0]-1) * percentage
@@ -53,6 +90,23 @@ def add_noise(y, percentage):
     return y
 
 def make_idx(dt_pinn, dt_data, t_num, y_num, tf, collocation_points, percentage):
+    """Find the right indexation of data points in collocation points
+
+    Args:
+        dt_pinn (float): Time step of collocation points
+        dt_data (float): Time step of data points
+        t_num (numpy array): Time
+        y_num (numpy array): Numerical results
+        tf (float): Simulation time
+        collocation_points (int): Collocation points of the PINN model
+        percentage (float): Relative error on data
+
+    Raises:
+        Exception: dt_pinn needs to be higher than dt_pinn!
+
+    Returns:
+        array and list: Input array, output array, list of indexation
+    """
 
     if dt_data < dt_pinn:
         step = int(dt_pinn/dt_data)
@@ -77,6 +131,16 @@ def make_idx(dt_pinn, dt_data, t_num, y_num, tf, collocation_points, percentage)
     return X, Y, vec_idx
 
 def put_in_device(X, Y, device):
+    """Put tensors in device
+
+    Args:
+        X (numpy array): Input array
+        Y (numpy array): Output array
+        device (string): CPU or CUDA
+
+    Returns:
+        tensor: Input and output tensors
+    """
 
     X = X.reshape(-1,1)
 

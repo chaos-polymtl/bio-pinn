@@ -1,10 +1,16 @@
+# ============================================================================
+# Physics-informed Neural Network functions using PyTorch
+# Goal : Predict the kinetic constants of artificial data.
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# ============================================================================
+
+# ---------------------------------------------------------------------------
 # Libraries
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-
 import numpy as np
-import os
+# ---------------------------------------------------------------------------
 
 # Set seed
 torch.set_default_dtype(torch.float)
@@ -15,6 +21,13 @@ np.random.seed(1234)
 class PINeuralNet(nn.Module):
 
     def __init__(self, device, k, neurons):
+        """Constructor
+
+        Args:
+            device (string): CPU or CUDA
+            k (list): Estimates of kinetic constants
+            neurons (int): Number of neurons in hidden layers
+        """
 
         super().__init__()
 
@@ -36,6 +49,14 @@ class PINeuralNet(nn.Module):
         self.k4 = nn.Parameter(self.k4)
 
     def forward(self, x):
+        """Forward pass
+
+        Args:
+            x (tensor): Input tensor
+
+        Returns:
+            tensor: Output tensor
+        """
 
         if torch.is_tensor(x) != True:
             x = torch.from_numpy(x)
@@ -57,6 +78,20 @@ class PINeuralNet(nn.Module):
 class Curiosity():
 
     def __init__(self, X, Y, idx, idx_y0, f_hat, learning_rate, k, neurons, regularization, device):
+        """Constructor
+
+        Args:
+            X (tensor): Input tensor
+            Y (tensor): Output tensor
+            idx (list): Index of data points in collocation points
+            idx_y0 (list): Index of IC points in collocation points
+            f_hat (tensor): Null tensor (for residual)
+            learning_rate (float): Learning rate for the gradient descent algorithm
+            k (list): Estimates of the kinetic constants
+            neurons (int): Number of neurons in hidden layers
+            regularization (float): Regularization parameter on the MSE of the ODEs
+            device (string): CPU or CUDA
+        """
         
         def loss_function_ode(output, target):
             
@@ -98,6 +133,15 @@ class Curiosity():
         self.optimizer = torch.optim.Adam(self.params, lr=self.lr)
 
     def loss(self, x, y_train):
+        """Loss function
+
+        Args:
+            x (tensor): Input tensor
+            y_train (tensor): Output tensor
+
+        Returns:
+            float: Evaluation of the loss function
+        """
 
         g = x.clone()
         g.requires_grad = True
@@ -142,6 +186,11 @@ class Curiosity():
         return self.total_loss
     
     def closure(self):
+        """Forward and backward pass
+
+        Returns:
+            float: Evaluation of the loss function
+        """
 
         self.optimizer.zero_grad()
         

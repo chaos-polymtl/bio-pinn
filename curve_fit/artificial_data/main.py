@@ -1,17 +1,43 @@
+# ============================================================================
+# Non linear regression method with artificial data using Scipy
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# PINN with 1 feature (time) and 4 outputs.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Imports
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
 np.random.seed(1234)
+# ----------------------------------------------------------------------------
 
 class CurveFit():
     
     def __init__(self, y0, idx, create):
+        """Constructor
+
+        Args:
+            y0 (array): Initial condition
+            idx (list): Indexation of data points in collocation points
+            create (bool): If True, create the database,
+                           if False, use it for curve_fit (scipy)
+        """
         self.y0 = y0
         self.idx = idx
         self.create = create
         
     def func(self, y, k1, k2, k3, k4):
+        """Right hand side of the ODEs
+
+        Args:
+            y (array): Values of dependant variables (concentrations)
+            k1, k2, k3, k4 (float): Kinetic constants
+
+        Returns:
+            array: Evaluation of the right hand side
+        """
         f = np.zeros(len(y))
         cA = y[0]
         cB = y[1]
@@ -24,6 +50,15 @@ class CurveFit():
         return f
 
     def ode(self, t, k1, k2, k3, k4):
+        """Molar balances
+
+        Args:
+            t (array): Time
+            k1, k2, k3, k4 (float): Kinetic parameters
+
+        Returns:
+            array: Solution of the ODEs
+        """
         y_out = np.array([])
         for i in range(1):
             y = np.array([self.y0])
@@ -53,6 +88,7 @@ class CurveFit():
                 
         return y_out
 
+# Initial conditions
 y0 = np.array([1.0, 0.0, 0.2, 0.0])
 
 # For solver
@@ -103,4 +139,4 @@ plt.plot(xtrain, ynoise.reshape((6,4))[:,3], 'oc', label='[D]')
 plt.legend()
 plt.xlabel('Time (s)')
 plt.ylabel('Concentration (mol/L)')
-plt.savefig('main.png', dpi=600)
+plt.show()

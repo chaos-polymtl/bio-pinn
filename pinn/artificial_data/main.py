@@ -1,11 +1,24 @@
+# ============================================================================
+# Physics-informed Neural Network functions using PyTorch
+# Goal : Predict the kinetic constants of artificial data.
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+
+# MAIN PROGRAM
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Imports
 from ode import *
 import matplotlib.pyplot as plt
 import torch
 from pinn import *
 from sklearn.metrics import mean_absolute_error
+# ---------------------------------------------------------------------------
 
+# Initial condition
 y0 = np.array([1., 0., 0.2, 0.])
 
+# Real kinetic constants
 class parameters():
     k1 = 1.5
     k2 = 0.5
@@ -14,6 +27,7 @@ class parameters():
 
 prm = parameters()
 
+# Artificial data
 dt = 0.1
 tf = 10
 t, mat_y = runge_kutta(y0, prm, dt, tf)
@@ -25,6 +39,7 @@ idx_y0 = [0]
 device = torch.device('cpu')
 X, Y = put_in_device(X, Y, device)
 
+# PINN Model
 f_hat = torch.zeros(X.shape[0], 1).to(device)
 k = [1., 1., 1., 1.]
 PINN = Curiosity(X, Y, idx, idx_y0, f_hat, 1e-2, k, 10, 1, device)
@@ -33,6 +48,7 @@ PINN = Curiosity(X, Y, idx, idx_y0, f_hat, 1e-2, k, 10, 1, device)
 for i, p in enumerate(PINN.PINN.parameters()):
     p.data.clamp_(min=0.)
 
+# Training
 epoch = 0
 max_epochs = 20000
 while epoch <= max_epochs:
@@ -60,6 +76,7 @@ while epoch <= max_epochs:
     except KeyboardInterrupt:
         break
 
+# Results
 c_pred = PINN.PINN(X)
 t_pred = X.detach().numpy()
 cA_pred = c_pred[:,0].detach().numpy()
@@ -88,7 +105,7 @@ plt.plot(t_train, cD_train, 'oc', label='[D]')
 plt.legend()
 plt.xlabel('Time (s)')
 plt.ylabel('Concentration (mol/L)')
-plt.savefig('main.png', dpi=600)
+plt.show()
 
 print(f'k1 = {PINN.PINN.k1.detach().numpy()}')
 print(f'k2 = {PINN.PINN.k2.detach().numpy()}')

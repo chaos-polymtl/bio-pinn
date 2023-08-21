@@ -1,3 +1,12 @@
+# ============================================================================
+# Non linear regression method (for comparison with PINN) using Scipy
+# Goal : Predict the kinetic constants of a microwave-assisted biodiesel process.
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# PINN with 1 feature (time) and 4 outputs.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Imports
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
@@ -6,10 +15,19 @@ from sklearn.metrics import mean_absolute_error
 import os
 np.random.seed(1234)
 PATH = os.getcwd()
+# ----------------------------------------------------------------------------
 
 class CurveFit():
     
     def __init__(self, y0, create):
+        """Constructor
+
+        Args:
+            y0 (array): Initial condition
+            idx (list): Indexation of data points in collocation points
+            create (bool): If True, create the database,
+                           if False, use it for curve_fit (scipy)
+        """
         self.y0 = y0
         self.create = create
         self.EVALUATE_Q = None
@@ -21,7 +39,15 @@ class CurveFit():
                       k51, k52,
                       k61, k62,
                       e, w1, w2):
-        
+        """Right hand side of the ODEs
+
+        Args:
+            y (array): Values of dependant variables (concentrations)
+            All constants k (float): Kinetic parameters
+
+        Returns:
+            array: Evaluation of the right hand side
+        """
         f = np.zeros(len(y))
 
         cTG = y[0]
@@ -48,6 +74,14 @@ class CurveFit():
         return f
 
     def get_file_data(self, file):
+        """Get experimental data points
+
+        Args:
+            file (string): Name of file of data points
+
+        Returns:
+            array: Portion of database
+        """
         df = pd.read_csv(file)
         t = df['t'].to_numpy().reshape(-1,1)
         if 'exp' in file.split('_')[0]:
@@ -65,6 +99,14 @@ class CurveFit():
         return y, z
     
     def get_data(self, files):
+        """Concatenate all data
+
+        Args:
+            files (list of string): All data files
+
+        Returns:
+            array: Full database
+        """
         for file in files:
             y, z = self.get_file_data(file)
             try:
@@ -83,6 +125,14 @@ class CurveFit():
         return self.ydata, self.zdata
 
     def make_idx(self, t):
+        """Indexation of data points within collocation points
+
+        Args:
+            t (array): Time
+
+        Returns:
+            list: Indexation
+        """
         self.idx_c = []
         self.idx_T = []
         for ti in self.ydata[:,0]:
@@ -100,6 +150,15 @@ class CurveFit():
                      k51, k52,
                      k61, k62,
                      e, w1, w2):
+        """Molar balances
+
+        Args:
+            t (array): Time
+            All constants k (float): Kinetic parameters
+
+        Returns:
+            array: Solution of the ODEs
+        """
         y_Q = np.empty((3*t.size,len(self.y0)))
         j = 0
         for Q in [4, 5, 6]:
@@ -156,6 +215,7 @@ class CurveFit():
                 
         return x_out
 
+# Initial conditions
 y0 = np.array([0.61911421,0.040004937,0.000394678,0.0,0.0,33.0])
 
 # Data
@@ -183,7 +243,7 @@ bounds = ((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -np.inf, -np.inf, -np.inf), (np.i
 popt, pcov = curve_fit(curve.ode, t, ytrain, p0=p0, bounds=bounds, method='trf')
 print(popt)
 
-# Pred
+# Predictions
 k11, k12, k21, k22, k31, k32, k41, k42, k51, k52, k61, k62, e, w1, w2 = popt[0], popt[1], popt[2], popt[3], popt[4], popt[5], popt[6], popt[7], popt[8], popt[9], popt[10], popt[11], popt[12], popt[13], popt[14]
 curve.create = True
 
@@ -224,7 +284,6 @@ plt.plot(np.linspace(0,240,1201), xpred_6W[:,1], '-k', label='TRF 6W')
 plt.legend()
 plt.xlabel('Temps (s)')
 plt.ylabel('[DG] (mol/L)')
-plt.savefig('main.png',dpi=600)
 plt.show()
 
 plt.plot(zexp[zexp[:,-1]==4][:,0], zexp[zexp[:,-1]==4][:,1], 'ob', label='Expériences 4W')
