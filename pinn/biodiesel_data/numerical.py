@@ -1,6 +1,24 @@
+# ============================================================================
+# Numerical solver
+# Author : Valérie Bibeau, Polytechnique Montréal, 2023
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Libraries importation
 import numpy as np
+# ---------------------------------------------------------------------------
 
 def EDO(y, prm, i):
+    """Right hand side of ODEs
+
+    Args:
+        y (array): Values of independant variables (concentrations)
+        prm (struc): Extra parameters
+        i (int): Integer
+
+    Returns:
+        array: Evaluation of the right hand side
+    """
 
     f = np.zeros(6)
 
@@ -34,7 +52,17 @@ def EDO(y, prm, i):
 
     return f
 
-def euler(y0, t, prm):
+def runge_kutta(y0, t, prm):
+    """Runge-Kutta method
+
+    Args:
+        y0 (array): Initial conditions
+        t (array): Time
+        prm (struct): Extra parameters
+
+    Returns:
+        array: Time and numerical solutions of the ODEs
+    """
 
     mat_y = np.array([y0])
 
