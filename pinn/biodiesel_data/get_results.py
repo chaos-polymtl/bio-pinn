@@ -100,19 +100,19 @@ class parameters():
     
 prm = parameters()
 
-t_num, y_num = euler(y0, df_6W['t'].to_numpy(), prm)
+t_num, y_num = runge_kutta(y0, df_6W['t'].to_numpy(), prm)
 y0 = np.array([0.61911421,0.040004937,0.000394678,0.0,0.0,
                np.min(df_5W['T'].to_numpy())])
 
 prm.Q = 5
 prm.T = df_5W['T'].to_numpy()
-t_num_5, y_num_5 = euler(y0, df_5W['t'].to_numpy(), prm)
+t_num_5, y_num_5 = runge_kutta(y0, df_5W['t'].to_numpy(), prm)
 y0 = np.array([0.61911421,0.040004937,0.000394678,0.0,0.0,
                np.min(df_4W['T'].to_numpy())])
 
 prm.Q = 4
 prm.T = df_4W['T'].to_numpy()
-t_num_4, y_num_4 = euler(y0, df_4W['t'].to_numpy(), prm)
+t_num_4, y_num_4 = runge_kutta(y0, df_4W['t'].to_numpy(), prm)
 
 # --------------------------------------------------------------
 # Plots

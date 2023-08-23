@@ -1,5 +1,6 @@
 # ============================================================================
-# Numerical solver of ODEs using Runge-Kutta method
+# Generation of noisy artificial data using
+# a numerical solver of ODEs using Runge-Kutta method
 # Author : Valérie Bibeau, Polytechnique Montréal, 2023
 # ============================================================================
 
